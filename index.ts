@@ -1,44 +1,29 @@
-import {fromEvent, interval, Observable, of, throwError} from "rxjs";
-import {mergeMap, map, filter, tap, catchError, take, takeUntil} from "rxjs/operators";
-import {ajax} from "rxjs/ajax";
+import {interval, Subject} from "rxjs";
+import {take, multicast, refCount, publish, share, publishLast, publishBehavior, publishReplay} from "rxjs/operators";
 
-const timerButton = document.querySelector("#cancel");
-const timerOutput = document.querySelector("#times");
+const source$ = interval(1000).pipe(
+	take(4),
+	// multicast(new Subject()),
+	// publishLast(),
+	// publishBehavior(42),
+	publishReplay(),
+	refCount(),
+	// share()
+);
 
-const timer$ = new Observable(subscriber => {
-	let i = 0;
+source$.subscribe(v => console.log("Ob 1:", v));
 
-	let id = setInterval(() => {
-		subscriber.next(i++);
-	}, 1000)
+setTimeout(() => {
+	source$.subscribe(v => console.log("Ob 2:", v));
+}, 1000)
 
-	return () => {
-		console.log("End up!");
-		clearInterval(id);
-	}
-});
+setTimeout(() => {
+	source$.subscribe(v => console.log("Ob 3:", v));
+}, 2000)
 
-const cancelTimer$ = fromEvent(timerButton, "click");
-
-timer$.pipe(
-	take(5)
-).subscribe({
-	next: val => {
-		timerOutput.innerHTML += `${new Date().toLocaleTimeString()} (${val}) <br />`
-	}
-})
-
-function grabByYear (year, log) {
-	return source$ => source$.pipe(
-		filter(book => book.publicationYear < year),
-		tap(filteredBook => log ? console.log("--- filteredBook ----", filteredBook) : null)
-	)
-}
-
-ajax("/api/books")
-	.pipe(
-		mergeMap(res => res.response),
-		grabByYear(1950, true)
-	)
-	.subscribe(value => console.log(value))
-
+setTimeout(() => {
+	source$.subscribe({
+		next: v => console.log("Ob 4:", v),
+		complete: () => console.log("com 4")
+	});
+}, 5000)
